@@ -86,3 +86,63 @@ func TestE2E_InitSpecs(t *testing.T) {
 		}
 	}
 }
+
+func TestE2E_AgenticSetup(t *testing.T) {
+	modRoot := moduleRoot()
+	binPath := filepath.Join(modRoot, "ade_test.exe")
+	buildAde(t, modRoot, binPath)
+	defer os.Remove(binPath)
+
+	tmpDir := t.TempDir()
+
+	cmd := exec.Command(binPath, "init", "--force", "--output", tmpDir)
+	cmd.Dir = tmpDir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("ade init --force --output failed: %v\n%s", err, output)
+	}
+
+	outStr := string(output)
+	if !strings.Contains(outStr, "Configuration agentic terminée") {
+		t.Fatalf("output does not contain 'Configuration agentic terminée':\n%s", outStr)
+	}
+	if !strings.Contains(outStr, "Outils détectés") {
+		t.Fatalf("output does not contain 'Outils détectés':\n%s", outStr)
+	}
+	if !strings.Contains(outStr, "Skills") {
+		t.Fatalf("output does not contain 'Skills':\n%s", outStr)
+	}
+	if !strings.Contains(outStr, "Serveurs MCP") {
+		t.Fatalf("output does not contain 'Serveurs MCP':\n%s", outStr)
+	}
+}
+
+func TestE2E_AgenticSetup_SkipAll(t *testing.T) {
+	modRoot := moduleRoot()
+	binPath := filepath.Join(modRoot, "ade_test.exe")
+	buildAde(t, modRoot, binPath)
+	defer os.Remove(binPath)
+
+	tmpDir := t.TempDir()
+
+	cmd := exec.Command(binPath, "init", "--skip-tools", "--skip-skills", "--skip-mcp", "--output", tmpDir)
+	cmd.Dir = tmpDir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("ade init --skip-all failed: %v\n%s", err, output)
+	}
+
+	outStr := string(output)
+	if !strings.Contains(outStr, "Configuration agentic terminée") {
+		t.Fatalf("output does not contain 'Configuration agentic terminée':\n%s", outStr)
+	}
+	if strings.Contains(outStr, "Outils détectés") {
+		t.Fatal("output should NOT contain 'Outils détectés' when --skip-tools is set")
+	}
+	if strings.Contains(outStr, "Skills") {
+		t.Fatal("output should NOT contain 'Skills' when --skip-skills is set")
+	}
+	if strings.Contains(outStr, "Serveurs MCP") {
+		t.Fatal("output should NOT contain 'Serveurs MCP' when --skip-mcp is set")
+	}
+}

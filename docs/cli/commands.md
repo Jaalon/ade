@@ -9,7 +9,9 @@ ade [command] [flags]
 ```
 
 ### Commandes disponibles
-- `init` — Initialise les composants du projet
+- `init` — Initialise les composants du projet (setup agentic complet)
+  - Flags : `--force`, `--output`, `--config`, `--skip-tools`, `--skip-skills`, `--skip-mcp`, `--halt-on-error`
+  - Documentation : `docs/agentic/setup.md`
   - `specs` — Génère les fichiers de configuration du projet
     - Flags : `--force`, `--output`, `--name`, `--lang`, `--module`
     - Documentation : `docs/commands/init-specs.md`

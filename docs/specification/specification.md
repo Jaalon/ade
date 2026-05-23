@@ -17,12 +17,11 @@ le déploiement d'une préproduction locale via docker-compose, et un système d
 - Configuration des outils agentic : OpenCode et Cursor
 - Installation et configuration des skills/sous-agents
 
-### Configuration IDE
-- Configuration des IDE JetBrains : IntelliJ IDEA et GoLand
+### Configuration IDE (reportée)
+- Configuration des IDE JetBrains (IntelliJ IDEA, GoLand) — à définir dans une story ultérieure
 
 ### Génération de fichiers de configuration locaux
 - `.gitignore`
-- Configuration IDE
 - Skills
 - `docker-compose.yml`
 - Serveurs MCP
