@@ -35,6 +35,14 @@ func (m *mockDockerClient) Close() error {
 	return nil
 }
 
+func (m *mockDockerClient) PullImage(_ context.Context, _ string) error {
+	return nil
+}
+
+func (m *mockDockerClient) RunContainer(_ context.Context, _ docker.ContainerExecConfig) (*docker.ContainerExecResult, error) {
+	return &docker.ContainerExecResult{Output: "mock", ExitCode: 0}, nil
+}
+
 func resetCiFlags() {
 	ciOutput = ""
 	ciForce = false

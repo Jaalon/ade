@@ -1,22 +1,40 @@
 package docker
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/image"
 	dockerClient "github.com/docker/docker/client"
 )
 
 var execLookPath = exec.LookPath
 
+type ContainerExecConfig struct {
+	Image   string
+	Command []string
+	Env     map[string]string
+	WorkDir string
+}
+
+type ContainerExecResult struct {
+	Output   string
+	ExitCode int64
+}
+
 type Client interface {
 	Ping(ctx context.Context) error
 	IsContainerRunning(ctx context.Context, containerName string) (bool, error)
 	Close() error
+
+	PullImage(ctx context.Context, image string) error
+	RunContainer(ctx context.Context, cfg ContainerExecConfig) (*ContainerExecResult, error)
 }
 
 type realClient struct {
@@ -48,6 +66,69 @@ func (c *realClient) IsContainerRunning(ctx context.Context, containerName strin
 
 func (c *realClient) Close() error {
 	return c.client.Close()
+}
+
+func (c *realClient) PullImage(ctx context.Context, imageRef string) error {
+	reader, err := c.client.ImagePull(ctx, imageRef, image.PullOptions{})
+	if err != nil {
+		return fmt.Errorf("pull image %s: %w", imageRef, err)
+	}
+	defer reader.Close()
+	_, _ = io.Copy(io.Discard, reader)
+	return nil
+}
+
+func (c *realClient) RunContainer(ctx context.Context, cfg ContainerExecConfig) (*ContainerExecResult, error) {
+	env := make([]string, 0, len(cfg.Env))
+	for k, v := range cfg.Env {
+		env = append(env, k+"="+v)
+	}
+
+	created, err := c.client.ContainerCreate(ctx, &container.Config{
+		Image:      cfg.Image,
+		Cmd:        cfg.Command,
+		Env:        env,
+		WorkingDir: cfg.WorkDir,
+	}, nil, nil, nil, "")
+	if err != nil {
+		return nil, fmt.Errorf("create container from %s: %w", cfg.Image, err)
+	}
+
+	if err := c.client.ContainerStart(ctx, created.ID, container.StartOptions{}); err != nil {
+		return nil, fmt.Errorf("start container %s: %w", created.ID, err)
+	}
+
+	statusCh, errCh := c.client.ContainerWait(ctx, created.ID, container.WaitConditionNotRunning)
+	select {
+	case err := <-errCh:
+		return nil, fmt.Errorf("wait container %s: %w", created.ID, err)
+	case <-statusCh:
+	}
+
+	logReader, err := c.client.ContainerLogs(ctx, created.ID, container.LogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("logs container %s: %w", created.ID, err)
+	}
+	defer logReader.Close()
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, logReader)
+
+	_ = c.client.ContainerRemove(ctx, created.ID, container.RemoveOptions{})
+
+	info, err := c.client.ContainerInspect(ctx, created.ID)
+	if err != nil {
+		return &ContainerExecResult{Output: buf.String(), ExitCode: 0}, nil
+	}
+	exitCode := int64(0)
+	if info.State != nil {
+		exitCode = int64(info.State.ExitCode)
+	}
+
+	return &ContainerExecResult{Output: buf.String(), ExitCode: exitCode}, nil
 }
 
 func Check() (string, error) {
