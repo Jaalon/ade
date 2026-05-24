@@ -9,11 +9,17 @@ import (
 	"text/template"
 )
 
+type ComposeConfig struct {
+	ConfigPort string
+	Network    string
+}
+
 type TemplateData struct {
 	ProjectName string
 	GoVersion   string
 	ModulePath  string
 	Lang        string
+	Compose     ComposeConfig
 }
 
 type TemplateInfo struct {
@@ -86,6 +92,15 @@ func init() {
 		"Skill feedback en français",
 		".opencode/skills/feedback-fr/SKILL.md",
 		"embed/opencode/skills/feedback-fr/SKILL.md")
+
+	register("docker-compose",
+		"Environnement de préproduction (docker-compose.yml)",
+		"docker-compose.yml",
+		"embed/docker-compose.yml.tmpl")
+	register("env",
+		"Variables d'environnement (.env)",
+		".env",
+		"embed/env.tmpl")
 }
 
 func buildRegistry() {

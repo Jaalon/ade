@@ -97,3 +97,74 @@ func TestRenderFS_NotFound(t *testing.T) {
 		t.Fatal("expected error for nonexistent file")
 	}
 }
+
+func TestRender_DockerCompose(t *testing.T) {
+	data := TemplateData{
+		ProjectName: "mon-projet",
+		Compose: ComposeConfig{
+			ConfigPort: "9090",
+			Network:    "mon-network",
+		},
+	}
+	out, err := Render("docker-compose", data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "nginx:alpine") {
+		t.Errorf("output should contain 'nginx:alpine', got: %s", out)
+	}
+	if !strings.Contains(out, "9090:80") {
+		t.Errorf("output should contain '9090:80', got: %s", out)
+	}
+	if !strings.Contains(out, "mon-network") {
+		t.Errorf("output should contain 'mon-network', got: %s", out)
+	}
+}
+
+func TestRender_Env(t *testing.T) {
+	data := TemplateData{
+		ProjectName: "mon-projet",
+		Compose: ComposeConfig{
+			ConfigPort: "9090",
+			Network:    "ade-net",
+		},
+	}
+	out, err := Render("env", data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "ADE_PROJECT_NAME=mon-projet") {
+		t.Errorf("output should contain 'ADE_PROJECT_NAME=mon-projet', got: %s", out)
+	}
+	if !strings.Contains(out, "ADE_CONFIG_PORT=9090") {
+		t.Errorf("output should contain 'ADE_CONFIG_PORT=9090', got: %s", out)
+	}
+	if !strings.Contains(out, "ADE_COMPOSE_NETWORK=ade-net") {
+		t.Errorf("output should contain 'ADE_COMPOSE_NETWORK=ade-net', got: %s", out)
+	}
+}
+
+func TestListTemplates_IncludesNew(t *testing.T) {
+	templates := ListTemplates()
+	names := make(map[string]bool)
+	for _, tmpl := range templates {
+		names[tmpl.Name] = true
+	}
+	if !names["docker-compose"] {
+		t.Error("expected 'docker-compose' in template list")
+	}
+	if !names["env"] {
+		t.Error("expected 'env' in template list")
+	}
+}
+
+func TestRender_DockerComposeMinimalData(t *testing.T) {
+	data := TemplateData{ProjectName: "test"}
+	out, err := Render("docker-compose", data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "nginx:alpine") {
+		t.Errorf("output should contain 'nginx:alpine' with minimal data, got: %s", out)
+	}
+}

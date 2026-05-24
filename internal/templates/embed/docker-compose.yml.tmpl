@@ -1,0 +1,18 @@
+version: "3.8"
+name: {{.ProjectName}}-preprod
+
+services:
+  ade-config:
+    image: nginx:alpine
+    container_name: ade-config
+    ports:
+      - "{{.Compose.ConfigPort}}:80"
+    env_file:
+      - .env
+    networks:
+      - {{.Compose.Network}}
+    restart: unless-stopped
+
+networks:
+  {{.Compose.Network}}:
+    driver: bridge

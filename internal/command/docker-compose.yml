@@ -1,0 +1,18 @@
+version: "3.8"
+name: command-preprod
+
+services:
+  ade-config:
+    image: nginx:alpine
+    container_name: ade-config
+    ports:
+      - "8080:80"
+    env_file:
+      - .env
+    networks:
+      - ade-network
+    restart: unless-stopped
+
+networks:
+  ade-network:
+    driver: bridge
