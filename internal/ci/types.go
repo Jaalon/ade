@@ -3,6 +3,7 @@ package ci
 type StageType string
 
 const (
+	StageValidate        StageType = "validate"
 	StageBuild           StageType = "build"
 	StageUnitTest        StageType = "unit-test"
 	StageIntegrationTest StageType = "integration-test"
@@ -14,6 +15,7 @@ const (
 func AllStages() []StageType {
 	return []StageType{
 		StageBuild,
+		StageValidate,
 		StageUnitTest,
 		StageIntegrationTest,
 		StageTestDeploy,
@@ -23,6 +25,7 @@ func AllStages() []StageType {
 }
 
 var stageDescriptions = map[StageType]string{
+	StageValidate:        "Validation de l'environnement",
 	StageBuild:           "Construction du projet",
 	StageUnitTest:        "Tests unitaires",
 	StageIntegrationTest: "Tests d'intégration",

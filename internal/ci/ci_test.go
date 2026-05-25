@@ -26,16 +26,18 @@ func (m *mockExecutor) Execute(ctx context.Context, step StepConfig) (*StepResul
 
 func TestStageTypeOrder(t *testing.T) {
 	stages := AllStages()
-	require.Len(t, stages, 6)
+	require.Len(t, stages, 7)
 	assert.Equal(t, StageBuild, stages[0])
-	assert.Equal(t, StageUnitTest, stages[1])
-	assert.Equal(t, StageIntegrationTest, stages[2])
-	assert.Equal(t, StageTestDeploy, stages[3])
-	assert.Equal(t, StageE2E, stages[4])
-	assert.Equal(t, StagePreprod, stages[5])
+	assert.Equal(t, StageValidate, stages[1])
+	assert.Equal(t, StageUnitTest, stages[2])
+	assert.Equal(t, StageIntegrationTest, stages[3])
+	assert.Equal(t, StageTestDeploy, stages[4])
+	assert.Equal(t, StageE2E, stages[5])
+	assert.Equal(t, StagePreprod, stages[6])
 }
 
 func TestStageDescription(t *testing.T) {
+	assert.NotEmpty(t, StageDescription(StageValidate))
 	assert.NotEmpty(t, StageDescription(StageBuild))
 	assert.NotEmpty(t, StageDescription(StageUnitTest))
 	assert.NotEmpty(t, StageDescription(StageIntegrationTest))
@@ -48,7 +50,7 @@ func TestStageDescription(t *testing.T) {
 
 func TestDefaultConfig(t *testing.T) {
 	cfg := DefaultConfig()
-	require.Len(t, cfg.Stages, 6)
+	require.Len(t, cfg.Stages, 7)
 	for _, s := range cfg.Stages {
 		assert.True(t, s.Enabled, "stage %s should be enabled", s.Type)
 		assert.GreaterOrEqual(t, len(s.Steps), 1, "stage %s should have at least 1 step", s.Type)
@@ -148,7 +150,7 @@ func TestPipelineRunner_AllSuccessful(t *testing.T) {
 	runner := NewPipelineRunner(executor)
 	result, err := runner.Run(context.Background(), DefaultConfig())
 	require.NoError(t, err)
-	require.Len(t, result.Stages, 6)
+	require.Len(t, result.Stages, 7)
 	for _, s := range result.Stages {
 		assert.Equal(t, StatusSucceeded, s.Status, "stage %s should be succeeded", s.Type)
 	}
@@ -181,14 +183,15 @@ func TestPipelineRunner_StageFailure(t *testing.T) {
 	runner := NewPipelineRunner(executor)
 	result, err := runner.Run(context.Background(), cfg)
 	require.NoError(t, err)
-	require.Len(t, result.Stages, 6)
+	require.Len(t, result.Stages, 7)
 
 	assert.Equal(t, StatusSucceeded, result.Stages[0].Status)
-	assert.Equal(t, StatusSucceeded, result.Stages[1].Status)
-	assert.Equal(t, StatusFailed, result.Stages[2].Status)
-	assert.Equal(t, StatusSkipped, result.Stages[3].Status)
+	assert.Equal(t, StatusSkipped, result.Stages[1].Status)
+	assert.Equal(t, StatusSucceeded, result.Stages[2].Status)
+	assert.Equal(t, StatusFailed, result.Stages[3].Status)
 	assert.Equal(t, StatusSkipped, result.Stages[4].Status)
 	assert.Equal(t, StatusSkipped, result.Stages[5].Status)
+	assert.Equal(t, StatusSkipped, result.Stages[6].Status)
 }
 
 func TestPipelineRunner_AllDisabled(t *testing.T) {
@@ -273,9 +276,10 @@ func TestPipelineRunner_ExecutorError(t *testing.T) {
 	runner := NewPipelineRunner(executor)
 	result, err := runner.Run(context.Background(), cfg)
 	require.NoError(t, err)
-	require.Len(t, result.Stages, 6)
+	require.Len(t, result.Stages, 7)
 	assert.Equal(t, StatusFailed, result.Stages[0].Status)
-	for i := 1; i < 6; i++ {
+	assert.Equal(t, StatusSkipped, result.Stages[1].Status)
+	for i := 2; i < 7; i++ {
 		assert.Equal(t, StatusSkipped, result.Stages[i].Status, "stage %d should be skipped", i)
 	}
 }
@@ -283,7 +287,7 @@ func TestPipelineRunner_ExecutorError(t *testing.T) {
 func TestLoadConfig_FileNotFound(t *testing.T) {
 	cfg, err := LoadConfig("./nonexistent-file-12345.yaml")
 	assert.NoError(t, err)
-	assert.Len(t, cfg.Stages, 6)
+	assert.Len(t, cfg.Stages, 7)
 }
 
 func TestLoadConfig_ValidYAML(t *testing.T) {

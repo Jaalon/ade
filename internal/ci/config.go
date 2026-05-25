@@ -19,13 +19,19 @@ func DefaultConfig() PipelineConfig {
 
 	stages := make([]StageConfig, len(AllStages()))
 	for i, t := range AllStages() {
+		steps := []StepConfig{
+			{Name: stageName(t), Command: []string{"echo", "Configure me in ade-pipeline.yaml"}},
+		}
+		if t == StageValidate {
+			steps = []StepConfig{
+				{Name: "Validation modulaire", Command: []string{"ade", "validate", "run", "--format", "junit"}},
+			}
+		}
 		stages[i] = StageConfig{
 			Type:    t,
 			Name:    stageName(t),
 			Enabled: true,
-			Steps: []StepConfig{
-				{Name: stageName(t), Command: []string{"echo", "Configure me in ade-pipeline.yaml"}},
-			},
+			Steps:   steps,
 		}
 	}
 	return PipelineConfig{Stages: stages}

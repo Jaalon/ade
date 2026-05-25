@@ -203,9 +203,10 @@ func TestLocalExecutor_WithPipelineRunner(t *testing.T) {
 	runner := NewPipelineRunner(e)
 	result, err := runner.Run(context.Background(), cfg)
 	require.NoError(t, err)
-	require.Len(t, result.Stages, 6)
+	require.Len(t, result.Stages, 7)
 	assert.Equal(t, StatusSucceeded, result.Stages[0].Status)
-	assert.Equal(t, StatusSucceeded, result.Stages[1].Status)
+	assert.Equal(t, StatusSkipped, result.Stages[1].Status)
+	assert.Equal(t, StatusSucceeded, result.Stages[2].Status)
 }
 
 func TestMain(m *testing.M) {

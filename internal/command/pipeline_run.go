@@ -35,8 +35,8 @@ var pipelineRunCmd = &cobra.Command{
 	Short: "Ex\u00e9cute le pipeline d'int\u00e9gration continue",
 	Long: `Ex\u00e9cute le pipeline d'int\u00e9gration continue locale.
 
-Le pipeline se compose de 6 \u00e9tages ex\u00e9cut\u00e9s s\u00e9quentiellement :
-build \u2192 tests unitaires \u2192 tests d'int\u00e9gration \u2192 d\u00e9ploiement test \u2192 E2E \u2192 pr\u00e9production.
+Le pipeline se compose de 7 \u00e9tages ex\u00e9cut\u00e9s s\u00e9quentiellement :
+build \u2192 validation \u2192 tests unitaires \u2192 tests d'int\u00e9gration \u2192 d\u00e9ploiement test \u2192 E2E \u2192 pr\u00e9production.
 
 Par d\u00e9faut, le pipeline s'ex\u00e9cute en mode dry-run (simulation).
 Utilisez --local pour ex\u00e9cuter les commandes directement sur la machine.`,

@@ -166,7 +166,7 @@ func TestDryRunExecutor_WithPipelineRunner(t *testing.T) {
 	runner := NewPipelineRunner(e)
 	result, err := runner.Run(context.Background(), DefaultConfig())
 	require.NoError(t, err)
-	require.Len(t, result.Stages, 6)
+	require.Len(t, result.Stages, 7)
 	for _, s := range result.Stages {
 		assert.Equal(t, StatusSucceeded, s.Status)
 		for _, step := range s.Steps {
@@ -209,7 +209,7 @@ func TestDryRunExecutor_WithPipelineRunnerPartialFailure(t *testing.T) {
 	runner := NewPipelineRunner(e)
 	result, err := runner.Run(context.Background(), DefaultConfig())
 	require.NoError(t, err)
-	require.Len(t, result.Stages, 6)
+	require.Len(t, result.Stages, 7)
 
 	hasSuccess := false
 	hasFailure := false
