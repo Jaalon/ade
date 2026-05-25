@@ -1,0 +1,20 @@
+# Workflow de développement généré par ade init specs
+version: "1.0"
+name: "Développement standard"
+description: "Workflow de développement itératif avec spécification, stories et tâches"
+steps:
+  - id: specification
+    name: "Spécification"
+    skill: "specification-{{.Lang}}"
+    description: "Définir ou mettre à jour les spécifications du projet"
+  - id: stories
+    name: "User Stories"
+    skill: "story-{{.Lang}}"
+    description: "Découper les spécifications en user stories"
+  - id: tasks
+    name: "Tâches"
+    skill: "tasks-{{.Lang}}"
+    description: "Découper les stories en tâches exécutables"
+  - id: implement
+    name: "Implémentation"
+    description: "Implémenter les tâches avec l'agent de code"

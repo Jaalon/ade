@@ -16,6 +16,12 @@ ade [command] [flags]
     - Flags : `--force`, `--output`, `--name`, `--lang`, `--module`
     - Documentation : `docs/commands/init-specs.md`
   - `ci` — Initialise l'intégration continue
+- `plugin` — Gère les plugins Docker
+  - `list` — Liste les plugins enregistrés
+  - `info` — Affiche les détails d'un plugin
+  - `install` — Installe un conteneur plugin Docker
+  - `uninstall` — Supprime un conteneur plugin Docker
+  - Documentation : `docs/commands/plugin.md`
 - `version` — Affiche la version
 
 ### Flags globaux

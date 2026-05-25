@@ -1,0 +1,60 @@
+syntax = "proto3";
+package plugin;
+
+option go_package = "automated_dev_environment/internal/plugins/contract;contract";
+
+service PluginService {
+    rpc Register(RegisterRequest) returns (RegisterResponse);
+    rpc HealthCheck(Empty) returns (HealthCheckResponse);
+    rpc GetCapabilities(Empty) returns (CapabilitiesResponse);
+}
+
+message Empty {}
+
+message Capability {
+    string name = 1;
+    string description = 2;
+    string version = 3;
+    string config_schema = 4;
+}
+
+message PluginDescriptor {
+    string name = 1;
+    string version = 2;
+    string description = 3;
+    string api_version = 4;
+    repeated Capability capabilities = 5;
+    map<string, string> endpoints = 6;
+}
+
+message RegisterRequest {
+    string name = 1;
+    string version = 2;
+    string api_version = 3;
+    string description = 4;
+    string grpc_address = 5;
+    string http_address = 6;
+    repeated Capability capabilities = 7;
+    map<string, string> endpoints = 8;
+}
+
+message RegisterResponse {
+    bool accepted = 1;
+    string message = 2;
+}
+
+message HealthCheckResponse {
+    enum Status {
+        UNKNOWN = 0;
+        HEALTHY = 1;
+        DEGRADED = 2;
+        UNHEALTHY = 3;
+    }
+    Status status = 1;
+    string message = 2;
+    int64 timestamp = 3;
+}
+
+message CapabilitiesResponse {
+    repeated Capability capabilities = 1;
+}
