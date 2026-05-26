@@ -12,9 +12,15 @@ import (
 
 var listPluginsFn = func(ctx context.Context) (string, error) {
 	client := orchestrator.NewClient()
+	if err := client.Health(ctx); err != nil {
+		return "", nil
+	}
 	plugins, err := client.ListPlugins(ctx)
 	if err != nil {
-		return "", err
+		return "", nil
+	}
+	if len(plugins) == 0 {
+		return "Aucun plugin enregistr\u00e9.\n", nil
 	}
 	raw := orchestrator.FormatPluginList(plugins)
 

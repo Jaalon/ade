@@ -31,6 +31,14 @@ func (m *mockDockerClient) IsContainerRunning(_ context.Context, _ string) (bool
 	return false, nil
 }
 
+func (m *mockDockerClient) ImageIsAvailable(_ context.Context, _ string) (bool, error) {
+	return false, nil
+}
+
+func (m *mockDockerClient) StartOrchestratorContainer(_ context.Context, _ string, _, _ int) error {
+	return nil
+}
+
 func (m *mockDockerClient) Close() error {
 	return nil
 }
@@ -248,7 +256,7 @@ func TestInitCi_CustomPort(t *testing.T) {
 
 	composePath := filepath.Join(dir, "docker-compose.yml")
 	data, _ := os.ReadFile(composePath)
-	assert.Contains(t, string(data), "9090:80")
+	assert.Contains(t, string(data), "9090:8080")
 }
 
 func TestInitCi_ComposeNotFoundContinues(t *testing.T) {
@@ -414,7 +422,7 @@ func TestInitCi_DefaultPortAndNetwork(t *testing.T) {
 
 	composePath := filepath.Join(dir, "docker-compose.yml")
 	data, _ := os.ReadFile(composePath)
-	assert.Contains(t, string(data), "8080:80")
+	assert.Contains(t, string(data), "8080:8080")
 	assert.Contains(t, string(data), "ade-network")
 }
 
@@ -498,7 +506,9 @@ func TestInitCi_RenderComposeFromOptions(t *testing.T) {
 	data := opts.toTemplateData()
 	out, err := templates.Render("docker-compose", data)
 	assert.NoError(t, err)
-	assert.Contains(t, out, "nginx:alpine")
-	assert.Contains(t, out, "7070:80")
+	assert.Contains(t, out, "ade/ade-config:latest")
+	assert.Contains(t, out, "7070:8080")
 	assert.Contains(t, out, "test-net")
+	assert.Contains(t, out, "9090:9090")
+	assert.Contains(t, out, "healthcheck")
 }

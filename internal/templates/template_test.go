@@ -102,22 +102,29 @@ func TestRender_DockerCompose(t *testing.T) {
 	data := TemplateData{
 		ProjectName: "mon-projet",
 		Compose: ComposeConfig{
-			ConfigPort: "9090",
-			Network:    "mon-network",
+			ConfigPort:  "9090",
+			ConfigImage: "ade/ade-config:latest",
+			Network:     "mon-network",
 		},
 	}
 	out, err := Render("docker-compose", data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(out, "nginx:alpine") {
-		t.Errorf("output should contain 'nginx:alpine', got: %s", out)
+	if !strings.Contains(out, "ade/ade-config:latest") {
+		t.Errorf("output should contain 'ade/ade-config:latest', got: %s", out)
 	}
-	if !strings.Contains(out, "9090:80") {
-		t.Errorf("output should contain '9090:80', got: %s", out)
+	if !strings.Contains(out, "9090:8080") {
+		t.Errorf("output should contain '9090:8080', got: %s", out)
+	}
+	if !strings.Contains(out, "9090:9090") {
+		t.Errorf("output should contain '9090:9090', got: %s", out)
 	}
 	if !strings.Contains(out, "mon-network") {
 		t.Errorf("output should contain 'mon-network', got: %s", out)
+	}
+	if !strings.Contains(out, "healthcheck") {
+		t.Errorf("output should contain 'healthcheck', got: %s", out)
 	}
 }
 
@@ -125,8 +132,9 @@ func TestRender_Env(t *testing.T) {
 	data := TemplateData{
 		ProjectName: "mon-projet",
 		Compose: ComposeConfig{
-			ConfigPort: "9090",
-			Network:    "ade-net",
+			ConfigPort:  "9090",
+			ConfigImage: "ade/ade-config:latest",
+			Network:     "ade-net",
 		},
 	}
 	out, err := Render("env", data)
@@ -141,6 +149,9 @@ func TestRender_Env(t *testing.T) {
 	}
 	if !strings.Contains(out, "ADE_COMPOSE_NETWORK=ade-net") {
 		t.Errorf("output should contain 'ADE_COMPOSE_NETWORK=ade-net', got: %s", out)
+	}
+	if !strings.Contains(out, "ADE_CONFIG_IMAGE=ade/ade-config:latest") {
+		t.Errorf("output should contain 'ADE_CONFIG_IMAGE=ade/ade-config:latest', got: %s", out)
 	}
 }
 
@@ -159,12 +170,20 @@ func TestListTemplates_IncludesNew(t *testing.T) {
 }
 
 func TestRender_DockerComposeMinimalData(t *testing.T) {
-	data := TemplateData{ProjectName: "test"}
+	data := TemplateData{
+		ProjectName: "test",
+		Compose: ComposeConfig{
+			ConfigImage: "ade/ade-config:latest",
+		},
+	}
 	out, err := Render("docker-compose", data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(out, "nginx:alpine") {
-		t.Errorf("output should contain 'nginx:alpine' with minimal data, got: %s", out)
+	if !strings.Contains(out, "ade/ade-config:latest") {
+		t.Errorf("output should contain 'ade/ade-config:latest' with minimal data, got: %s", out)
+	}
+	if !strings.Contains(out, "healthcheck") {
+		t.Errorf("output should contain 'healthcheck', got: %s", out)
 	}
 }

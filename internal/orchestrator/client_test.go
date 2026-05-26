@@ -131,6 +131,150 @@ func TestHealth(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestGetConfig(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/v1/config", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(ConfigResponse{
+			ProjectName:         "mon-projet",
+			OrchestratorVersion: "1.0.0",
+			RESTPort:            8080,
+			GRPCPort:            9090,
+		})
+	}))
+	defer srv.Close()
+
+	client := NewClientWithURL(srv.URL)
+	cfg, err := client.GetConfig(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, "mon-projet", cfg.ProjectName)
+	assert.Equal(t, "1.0.0", cfg.OrchestratorVersion)
+	assert.Equal(t, 8080, cfg.RESTPort)
+	assert.Equal(t, 9090, cfg.GRPCPort)
+}
+
+func TestGetConfig_ServerError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("erreur interne"))
+	}))
+	defer srv.Close()
+
+	client := NewClientWithURL(srv.URL)
+	_, err := client.GetConfig(context.Background())
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "erreur interne")
+}
+
+func TestGetDashboardStats(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/v1/dashboard/stats", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(DashboardStats{
+			Projects:      5,
+			Plugins:       3,
+			Workflows:     12,
+			Reports:       7,
+			ActivePlugins: 2,
+		})
+	}))
+	defer srv.Close()
+
+	client := NewClientWithURL(srv.URL)
+	stats, err := client.GetDashboardStats(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, 5, stats.Projects)
+	assert.Equal(t, 3, stats.Plugins)
+	assert.Equal(t, 2, stats.ActivePlugins)
+}
+
+func TestListProjects(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/v1/projects", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"projects": []map[string]interface{}{
+				{"name": "projet-a"},
+				{"name": "projet-b"},
+			},
+		})
+	}))
+	defer srv.Close()
+
+	client := NewClientWithURL(srv.URL)
+	projects, err := client.ListProjects(context.Background())
+	assert.NoError(t, err)
+	assert.Len(t, projects, 2)
+	assert.Equal(t, "projet-a", projects[0].Name)
+	assert.Equal(t, "projet-b", projects[1].Name)
+}
+
+func TestListProjects_Empty(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"projects": []interface{}{},
+		})
+	}))
+	defer srv.Close()
+
+	client := NewClientWithURL(srv.URL)
+	projects, err := client.ListProjects(context.Background())
+	assert.NoError(t, err)
+	assert.Len(t, projects, 0)
+}
+
+func TestCreateProject(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/v1/projects", r.URL.Path)
+		assert.Equal(t, http.MethodPost, r.Method)
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer srv.Close()
+
+	client := NewClientWithURL(srv.URL)
+	err := client.CreateProject(context.Background(), Project{Name: "new-project"})
+	assert.NoError(t, err)
+}
+
+func TestCreateProject_Error(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusConflict)
+		w.Write([]byte(`{"error":"projet déjà existant"}`))
+	}))
+	defer srv.Close()
+
+	client := NewClientWithURL(srv.URL)
+	err := client.CreateProject(context.Background(), Project{Name: "existing"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "déjà existant")
+}
+
+func TestDeleteProject(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/v1/projects/mon-projet", r.URL.Path)
+		assert.Equal(t, http.MethodDelete, r.Method)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	client := NewClientWithURL(srv.URL)
+	err := client.DeleteProject(context.Background(), "mon-projet")
+	assert.NoError(t, err)
+}
+
+func TestDeleteProject_NotFound(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	client := NewClientWithURL(srv.URL)
+	err := client.DeleteProject(context.Background(), "inconnu")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "introuvable")
+}
+
 func TestHealth_NotOK(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)

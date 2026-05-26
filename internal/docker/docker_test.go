@@ -11,10 +11,12 @@ import (
 )
 
 type mockClient struct {
-	pingFunc           func(ctx context.Context) error
-	isContainerRunning func(ctx context.Context, name string) (bool, error)
-	pullImageFunc      func(ctx context.Context, image string) error
-	runContainerFunc   func(ctx context.Context, cfg ContainerExecConfig) (*ContainerExecResult, error)
+	pingFunc                       func(ctx context.Context) error
+	isContainerRunning             func(ctx context.Context, name string) (bool, error)
+	imageIsAvailableFunc           func(ctx context.Context, image string) (bool, error)
+	startOrchestratorContainerFunc func(ctx context.Context, image string, restPort, grpcPort int) error
+	pullImageFunc                  func(ctx context.Context, image string) error
+	runContainerFunc               func(ctx context.Context, cfg ContainerExecConfig) (*ContainerExecResult, error)
 }
 
 func (m *mockClient) Ping(ctx context.Context) error {
@@ -29,6 +31,20 @@ func (m *mockClient) IsContainerRunning(ctx context.Context, name string) (bool,
 		return m.isContainerRunning(ctx, name)
 	}
 	return false, nil
+}
+
+func (m *mockClient) ImageIsAvailable(ctx context.Context, image string) (bool, error) {
+	if m.imageIsAvailableFunc != nil {
+		return m.imageIsAvailableFunc(ctx, image)
+	}
+	return false, nil
+}
+
+func (m *mockClient) StartOrchestratorContainer(ctx context.Context, image string, restPort, grpcPort int) error {
+	if m.startOrchestratorContainerFunc != nil {
+		return m.startOrchestratorContainerFunc(ctx, image, restPort, grpcPort)
+	}
+	return nil
 }
 
 func (m *mockClient) Close() error { return nil }
@@ -190,6 +206,115 @@ func TestRunContainerError(t *testing.T) {
 	result, err := mock.RunContainer(context.Background(), cfg)
 	assert.Error(t, err)
 	assert.Nil(t, result)
+}
+
+func TestEnsureOrchestratorRunning_ContainerAlreadyRunning(t *testing.T) {
+	savedCheck := execLookPath
+	defer func() { execLookPath = savedCheck }()
+	execLookPath = func(name string) (string, error) {
+		if name == "docker" {
+			return "docker", nil
+		}
+		return "", fmt.Errorf("not found")
+	}
+
+	savedNewClient := NewClient
+	defer func() { NewClient = savedNewClient }()
+	NewClient = func() (Client, error) {
+		return &mockClient{
+			pingFunc: func(_ context.Context) error { return nil },
+			isContainerRunning: func(_ context.Context, name string) (bool, error) {
+				assert.Equal(t, ConfigContainerName, name)
+				return true, nil
+			},
+		}, nil
+	}
+
+	err := EnsureOrchestratorRunning(context.Background())
+	assert.NoError(t, err)
+}
+
+func TestEnsureOrchestratorRunning_AutoStartImageAvailable(t *testing.T) {
+	savedCheck := execLookPath
+	defer func() { execLookPath = savedCheck }()
+	execLookPath = func(name string) (string, error) {
+		if name == "docker" {
+			return "docker", nil
+		}
+		return "", fmt.Errorf("not found")
+	}
+
+	containerStarted := false
+	savedNewClient := NewClient
+	defer func() { NewClient = savedNewClient }()
+	NewClient = func() (Client, error) {
+		return &mockClient{
+			pingFunc: func(_ context.Context) error { return nil },
+			isContainerRunning: func(_ context.Context, name string) (bool, error) {
+				return false, nil
+			},
+			imageIsAvailableFunc: func(_ context.Context, image string) (bool, error) {
+				assert.Equal(t, DefaultConfigImage, image)
+				return true, nil
+			},
+			startOrchestratorContainerFunc: func(_ context.Context, image string, restPort, grpcPort int) error {
+				containerStarted = true
+				assert.Equal(t, DefaultConfigImage, image)
+				assert.Equal(t, DefaultRESTPort, restPort)
+				assert.Equal(t, DefaultGRPCPort, grpcPort)
+				return nil
+			},
+		}, nil
+	}
+
+	err := EnsureOrchestratorRunning(context.Background())
+	assert.NoError(t, err)
+	assert.True(t, containerStarted, "le conteneur aurait dû être démarré")
+}
+
+func TestEnsureOrchestratorRunning_ImageNotAvailable(t *testing.T) {
+	savedCheck := execLookPath
+	defer func() { execLookPath = savedCheck }()
+	execLookPath = func(name string) (string, error) {
+		if name == "docker" {
+			return "docker", nil
+		}
+		return "", fmt.Errorf("not found")
+	}
+
+	containerStarted := false
+	savedNewClient := NewClient
+	defer func() { NewClient = savedNewClient }()
+	NewClient = func() (Client, error) {
+		return &mockClient{
+			pingFunc: func(_ context.Context) error { return nil },
+			isContainerRunning: func(_ context.Context, name string) (bool, error) {
+				return false, nil
+			},
+			imageIsAvailableFunc: func(_ context.Context, image string) (bool, error) {
+				return false, nil
+			},
+			startOrchestratorContainerFunc: func(_ context.Context, image string, restPort, grpcPort int) error {
+				containerStarted = true
+				return nil
+			},
+		}, nil
+	}
+
+	err := EnsureOrchestratorRunning(context.Background())
+	assert.NoError(t, err)
+	assert.False(t, containerStarted, "le conteneur n'aurait pas dû être démarré")
+}
+
+func TestEnsureOrchestratorRunning_DockerUnavailable(t *testing.T) {
+	savedCheck := execLookPath
+	defer func() { execLookPath = savedCheck }()
+	execLookPath = func(name string) (string, error) {
+		return "", fmt.Errorf("not found")
+	}
+
+	err := EnsureOrchestratorRunning(context.Background())
+	assert.NoError(t, err)
 }
 
 func TestMain(m *testing.M) {

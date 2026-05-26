@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -10,8 +11,11 @@ import (
 	"strings"
 	"time"
 
+	pb "automated_dev_environment/api/grpc"
 	"automated_dev_environment/internal/plugins/contract"
 	"automated_dev_environment/internal/plugins/registry"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type orchestratorConfig struct {
@@ -62,6 +66,132 @@ func NewClientWithURL(restURL string) *Client {
 		},
 		timeout: 5 * time.Second,
 	}
+}
+
+func (c *Client) doRequest(ctx context.Context, method, path string, body io.Reader) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, method, c.restURL+path, body)
+	if err != nil {
+		return nil, fmt.Errorf("création requête: %w", err)
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("orchestrateur non disponible: %w", err)
+	}
+	return resp, nil
+}
+
+func (c *Client) GetConfig(ctx context.Context) (*ConfigResponse, error) {
+	resp, err := c.doRequest(ctx, http.MethodGet, "/api/v1/config", nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("lecture réponse: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("orchestrateur: %s", string(body))
+	}
+
+	var cfg ConfigResponse
+	if err := json.Unmarshal(body, &cfg); err != nil {
+		return nil, fmt.Errorf("erreur de communication avec l'orchestrateur: %w", err)
+	}
+	return &cfg, nil
+}
+
+func (c *Client) GetDashboardStats(ctx context.Context) (*DashboardStats, error) {
+	resp, err := c.doRequest(ctx, http.MethodGet, "/api/v1/dashboard/stats", nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("lecture réponse: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("orchestrateur: %s", string(body))
+	}
+
+	var stats DashboardStats
+	if err := json.Unmarshal(body, &stats); err != nil {
+		return nil, fmt.Errorf("erreur de communication avec l'orchestrateur: %w", err)
+	}
+	return &stats, nil
+}
+
+func (c *Client) ListProjects(ctx context.Context) ([]Project, error) {
+	resp, err := c.doRequest(ctx, http.MethodGet, "/api/v1/projects", nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("lecture réponse: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("orchestrateur: %s", string(body))
+	}
+
+	var result struct {
+		Projects []Project `json:"projects"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("erreur de communication avec l'orchestrateur: %w", err)
+	}
+	return result.Projects, nil
+}
+
+func (c *Client) CreateProject(ctx context.Context, p Project) error {
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(p); err != nil {
+		return fmt.Errorf("encodage projet: %w", err)
+	}
+
+	resp, err := c.doRequest(ctx, http.MethodPost, "/api/v1/projects", &buf)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("lecture réponse: %w", err)
+	}
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("orchestrateur: %s", string(body))
+	}
+	return nil
+}
+
+func (c *Client) DeleteProject(ctx context.Context, name string) error {
+	resp, err := c.doRequest(ctx, http.MethodDelete, "/api/v1/projects/"+name, nil)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return fmt.Errorf("projet %q introuvable", name)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("lecture réponse: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("orchestrateur: %s", string(body))
+	}
+	return nil
 }
 
 func (c *Client) ListPlugins(ctx context.Context) ([]*registry.PluginInstance, error) {
@@ -220,6 +350,55 @@ func FormatPluginInfo(p *registry.PluginInstance) string {
 	}
 
 	return b.String()
+}
+
+func (c *Client) grpcAddr() string {
+	addr := strings.TrimPrefix(c.grpcURL, "grpc://")
+	return addr
+}
+
+func (c *Client) dialGRPC(ctx context.Context) (*grpc.ClientConn, error) {
+	dialCtx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+	return grpc.DialContext(dialCtx, c.grpcAddr(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+}
+
+func (c *Client) RegisterPluginGRPC(ctx context.Context, name, version, httpAddr, grpcAddr string) (*pb.RegisterPluginResponse, error) {
+	conn, err := c.dialGRPC(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("connexion gRPC: %w", err)
+	}
+	defer conn.Close()
+
+	client := pb.NewOrchestratorServiceClient(conn)
+	return client.RegisterPlugin(ctx, &pb.RegisterPluginRequest{
+		Name:        name,
+		Version:     version,
+		HttpAddress: httpAddr,
+		GrpcAddress: grpcAddr,
+	})
+}
+
+func (c *Client) ListPluginsGRPC(ctx context.Context) (*pb.ListPluginsResponse, error) {
+	conn, err := c.dialGRPC(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("connexion gRPC: %w", err)
+	}
+	defer conn.Close()
+
+	client := pb.NewOrchestratorServiceClient(conn)
+	return client.ListPlugins(ctx, &pb.ListPluginsRequest{})
+}
+
+func (c *Client) GetConfigGRPC(ctx context.Context) (*pb.GetConfigResponse, error) {
+	conn, err := c.dialGRPC(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("connexion gRPC: %w", err)
+	}
+	defer conn.Close()
+
+	client := pb.NewOrchestratorServiceClient(conn)
+	return client.GetConfig(ctx, &pb.GetConfigRequest{})
 }
 
 var contractErrPluginNotFound = contract.ErrPluginNotFound

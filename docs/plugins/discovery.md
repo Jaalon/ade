@@ -2,7 +2,24 @@
 
 ## Mécanisme push
 
-Le plugin s'enregistre automatiquement auprès du registry via `POST /api/v1/plugins/register`.
+Le plugin s'enregistre automatiquement auprès du registry via :
+
+### REST API
+`POST /api/v1/plugins/register`
+
+### gRPC API
+`OrchestratorService.RegisterPlugin` sur le port gRPC (9090 par défaut).
+
+```go
+conn, _ := grpc.Dial("orchestrateur:9090", grpc.WithTransportCredentials(insecure.NewCredentials()))
+client := orchestrator.NewOrchestratorServiceClient(conn)
+resp, err := client.RegisterPlugin(ctx, &orchestrator.RegisterPluginRequest{
+    Name:        "mon-plugin",
+    Version:     "1.0.0",
+    HttpAddress: "mon-plugin:8081",
+    GrpcAddress: "mon-plugin:50051",
+})
+```
 
 Flux :
 1. Le plugin démarre et configure son serveur REST + gRPC via le SDK

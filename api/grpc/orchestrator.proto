@@ -1,0 +1,66 @@
+syntax = "proto3";
+package orchestrator;
+
+option go_package = "automated_dev_environment/api/grpc;grpc";
+
+service OrchestratorService {
+    rpc RegisterPlugin(RegisterPluginRequest) returns (RegisterPluginResponse);
+    rpc GetConfig(GetConfigRequest) returns (GetConfigResponse);
+    rpc ListPlugins(ListPluginsRequest) returns (ListPluginsResponse);
+    rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+}
+
+message Capability {
+    string name = 1;
+    string version = 2;
+    string description = 3;
+}
+
+message RegisterPluginRequest {
+    string name = 1;
+    string version = 2;
+    string description = 3;
+    string http_address = 4;
+    string grpc_address = 5;
+    string api_version = 6;
+    repeated Capability capabilities = 7;
+    map<string, string> endpoints = 8;
+}
+
+message RegisterPluginResponse {
+    bool accepted = 1;
+    string message = 2;
+}
+
+message GetConfigRequest {}
+
+message GetConfigResponse {
+    string project_name = 1;
+    string orchestrator_version = 2;
+    int32 rest_port = 3;
+    int32 grpc_port = 4;
+    map<string, string> settings = 5;
+}
+
+message ListPluginsRequest {}
+
+message ListPluginsResponse {
+    repeated PluginInfo plugins = 1;
+}
+
+message PluginInfo {
+    string name = 1;
+    string version = 2;
+    string status = 3;
+    string http_address = 4;
+    string grpc_address = 5;
+    repeated Capability capabilities = 6;
+}
+
+message HeartbeatRequest {
+    string plugin_name = 1;
+}
+
+message HeartbeatResponse {
+    bool accepted = 1;
+}

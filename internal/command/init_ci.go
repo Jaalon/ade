@@ -32,6 +32,7 @@ var (
 	ciName    string
 	ciPort    string
 	ciNetwork string
+	ciImage   string
 )
 
 var initCiCmd = &cobra.Command{
@@ -46,15 +47,21 @@ type ciOptions struct {
 	Force          bool
 	ProjectName    string
 	ConfigPort     string
+	ConfigImage    string
 	ComposeNetwork string
 }
 
 func (o ciOptions) toTemplateData() templates.TemplateData {
+	img := o.ConfigImage
+	if img == "" {
+		img = docker.DefaultConfigImage
+	}
 	return templates.TemplateData{
 		ProjectName: o.ProjectName,
 		Compose: templates.ComposeConfig{
-			ConfigPort: o.ConfigPort,
-			Network:    o.ComposeNetwork,
+			ConfigPort:  o.ConfigPort,
+			ConfigImage: img,
+			Network:     o.ComposeNetwork,
 		},
 	}
 }
@@ -89,6 +96,7 @@ func runInitCi(cmd *cobra.Command, args []string) error {
 		Force:          ciForce,
 		ProjectName:    projectName,
 		ConfigPort:     ciPort,
+		ConfigImage:    ciImage,
 		ComposeNetwork: ciNetwork,
 	}
 
@@ -218,4 +226,5 @@ func init() {
 	initCiCmd.Flags().StringVar(&ciName, "name", "", "Nom du projet (d\u00e9faut: nom du r\u00e9pertoire)")
 	initCiCmd.Flags().StringVar(&ciPort, "port", "8080", "Port du conteneur de configuration (web UI)")
 	initCiCmd.Flags().StringVar(&ciNetwork, "network", "ade-network", "Nom du r\u00e9seau Docker")
+	initCiCmd.Flags().StringVar(&ciImage, "image", "", "Image de l'orchestrateur (d\u00e9faut: ade/ade-config:latest)")
 }

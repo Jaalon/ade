@@ -1,0 +1,50 @@
+### Healthcheck
+GET http://localhost:8080/health
+
+### Créer un projet
+POST http://localhost:8080/api/v1/projects
+Content-Type: application/json
+
+{"name": "mon-app", "description": "Application de test"}
+
+### Lister les projets
+GET http://localhost:8080/api/v1/projects
+
+### Récupérer un projet
+GET http://localhost:8080/api/v1/projects/mon-app
+
+### Modifier un projet
+PUT http://localhost:8080/api/v1/projects/mon-app
+Content-Type: application/json
+
+{"description": "Description mise à jour"}
+
+### Supprimer un projet
+DELETE http://localhost:8080/api/v1/projects/mon-app
+
+### Créer un workflow
+POST http://localhost:8080/api/v1/workflows
+Content-Type: application/json
+
+{"name": "build-deploy", "project_name": "mon-app"}
+
+### Lister les workflows
+GET http://localhost:8080/api/v1/workflows
+
+### Lister les workflows d'un projet
+GET http://localhost:8080/api/v1/workflows?project=mon-app
+
+### Récupérer la configuration
+GET http://localhost:8080/api/v1/config
+
+### Mettre à jour la configuration
+PUT http://localhost:8080/api/v1/config
+Content-Type: application/json
+
+{"settings": {"theme": "dark", "language": "fr"}}
+
+### Lister les plugins
+GET http://localhost:8080/api/v1/plugins
+
+### Lister les rapports
+GET http://localhost:8080/api/v1/reports

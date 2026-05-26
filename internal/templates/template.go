@@ -10,8 +10,9 @@ import (
 )
 
 type ComposeConfig struct {
-	ConfigPort string
-	Network    string
+	ConfigPort  string
+	ConfigImage string
+	Network     string
 }
 
 type TemplateData struct {

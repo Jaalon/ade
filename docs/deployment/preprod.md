@@ -50,6 +50,12 @@ Les variables d'environnement sont définies dans `.env` (généré par `ade ini
 | Variable | Défaut | Description |
 |----------|--------|-------------|
 | `ADE_PROJECT_NAME` | (nom du répertoire) | Nom du projet |
-| `ADE_CONFIG_PORT` | `8080` | Port du conteneur de configuration |
+| `ADE_CONFIG_PORT` | `8080` | Port du conteneur de configuration (REST) |
+| `ADE_CONFIG_IMAGE` | `ade/ade-config:latest` | Image de l'orchestrateur |
 | `ADE_COMPOSE_NETWORK` | `ade-network` | Nom du réseau Docker |
 | `ADE_LOG_LEVEL` | `info` | Niveau de log (debug, info, warn, error) |
+
+### Auto-start
+
+Le CLI démarre automatiquement l'orchestrateur si l'image Docker est
+disponible localement. Utilisez `ade version -o` pour vérifier le statut :

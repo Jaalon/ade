@@ -3,15 +3,26 @@ name: {{.ProjectName}}-preprod
 
 services:
   ade-config:
-    image: nginx:alpine
+    image: {{.Compose.ConfigImage}}
     container_name: ade-config
     ports:
-      - "{{.Compose.ConfigPort}}:80"
+      - "{{.Compose.ConfigPort}}:8080"
+      - "9090:9090"
+    environment:
+      - ADE_CONFIG_REST_PORT=8080
+      - ADE_CONFIG_GRPC_PORT=9090
+      - ADE_PROJECT_NAME={{.ProjectName}}
     env_file:
       - .env
     networks:
       - {{.Compose.Network}}
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 networks:
   {{.Compose.Network}}:

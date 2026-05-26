@@ -22,6 +22,7 @@ ade init ci [flags]
 | `--name` | | (nom du répertoire) | Nom du projet pour le déploiement |
 | `--port` | | `8080` | Port du conteneur de configuration (web UI) |
 | `--network` | | `ade-network` | Nom du réseau Docker |
+| `--image` | | `ade/ade-config:latest` | Image de l'orchestrateur (défaut via `docker.DefaultConfigImage`) |
 
 ## Exemples
 
@@ -31,6 +32,9 @@ ade init ci
 
 # Avec options personnalisées
 ade init ci --output ./preprod --port 9090 --name mon-app
+
+# Avec une image personnalisée
+ade init ci --image registry.example.com/ade-config:v2
 
 # Forcer l'écrasement des fichiers existants
 ade init ci --force
